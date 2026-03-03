@@ -14,8 +14,8 @@
 \title{\textbf{Semantic Odyssey: Navigating Word Similarity Graphs}}
 \author{
     Alexander Davydenko \and
-    Sophia LAST NAME \and
-    Abhirve LAST NAME \and
+    Sophie Shu \and
+    Abhirve Munipalle
 }
 \date{CSC111 Project 2 --- Phase 1 Proposal \\ March 2026}
 
@@ -26,37 +26,35 @@
 % ─────────────────────────────────────────────────────────────────────────────
 \section{Problem Description and Project Question}
 
-The study of how words relate semantically is a central topic in computational
-linguistics, and modern natural language processing has produced powerful
-mathematical tools for quantifying these relationships.
+Computational linguistics has long been interested in measuring how closely two
+words relate in meaning, and word embeddings offer one of the most practical
+ways to do so.
 
-One such tool is GloVe (Global Vectors for Word Representation), a set of
-pre-trained word embeddings produced by Pennington et al.\ at Stanford
-\cite{glove}. In GloVe, each word is represented as a vector in
-high-dimensional space; words that tend to appear in similar linguistic contexts
-are placed near each other in that space. The \emph{cosine similarity} between
-two word vectors gives a principled, numerical measure of their semantic
-closeness, ranging from $-1$ (opposites) to $+1$ (identical context). This
-structure naturally gives rise to a \emph{graph}: the vertices are words, and
-edges connect words whose cosine similarity exceeds a threshold, weighted by
-that similarity score.
+GloVe (Global Vectors for Word Representation), developed by Pennington et al.\
+at Stanford \cite{glove}, assigns each word a vector in high-dimensional space;
+words that tend to appear in similar linguistic contexts are placed near each
+other in that space. The \emph{cosine similarity} between two word vectors gives
+a principled, numerical measure of their semantic closeness, ranging from $-1$
+(opposites) to $+1$ (identical context). This makes it straightforward to build
+a graph: vertices are words, and edges connect pairs whose cosine similarity
+exceeds a chosen threshold, weighted by that similarity score.
 
-The games Semantle and Wordle demonstrated widespread public interest in
-word-meaning puzzles. Inspired by these, we are designing \emph{Semantic Odyssey}:
-an interactive word-navigation puzzle in which the player starts at one word and
-must navigate a semantic similarity graph---step by step, choosing from a set of
-nearby words---to reach a hidden target word in as few moves as possible. The
-player receives feedback on how ``close'' or ``distant'' each available word is,
-and the game will compute a provably achievable optimal path using breadth-first
-search on the same graph the player navigates.
+Games like Semantle and Wordle have shown that word-meaning puzzles appeal to a
+broad audience. Inspired by these, we are designing \emph{Semantic Odyssey}: an
+interactive word-navigation puzzle. The player starts at a given word and tries
+to reach a hidden target by hopping through a semantic similarity graph,
+choosing among nearby words at each step, in as few moves as possible. The
+player receives feedback on how \emph{close} or \emph{distant} each available
+word is, and the game will compute a provably achievable optimal path using
+breadth-first search on the same graph the player navigates.
 
 \textbf{Our project question is: Can a semantic similarity graph built from
 GloVe word embeddings serve as the foundation for an engaging word-navigation
 puzzle, with BFS providing a meaningful optimal-path benchmark for players?}
 
-This is interesting because the graph is constructed lazily on demand from a
-400,000-word embedding model, making it computationally rich and grounded in
-real linguistic data without requiring any precomputation.
+A key design choice is that the graph is constructed lazily from a
+400,000-word embedding model, so the project is computationally rich and
+grounded in real linguistic data without requiring expensive precomputation.
 
 
 % ─────────────────────────────────────────────────────────────────────────────
@@ -64,12 +62,12 @@ real linguistic data without requiring any precomputation.
 
 \subsection*{Data}
 
-Our primary dataset is the GloVe \texttt{wiki-gigaword-50} corpus: 400,000
-English word vectors, each of dimension 50, trained on approximately 6 billion
-tokens drawn from Wikipedia 2014 and the English Gigaword 5 corpus \cite{glove}.
+We use the GloVe \texttt{wiki-gigaword-50} model, which contains
+50-dimensional vectors for 400,000 English words, trained on roughly 6 billion
+tokens from Wikipedia 2014 and the Gigaword 5 corpus \cite{glove}.
 We access the dataset through the \texttt{gensim} library's model downloader
 (\texttt{gensim.downloader.load}), which fetches and caches the vectors
-automatically. A sample from the data: the five nearest words to ``fire'' by
+automatically. For example, the five words closest to ``fire'' by
 cosine similarity are ``fires'' (0.82), ``wildfire'' (0.80), ``blaze'' (0.79),
 ``flames'' (0.77), and ``burning'' (0.75), illustrating the rich semantic
 neighbourhood structure the vectors encode.
@@ -78,7 +76,7 @@ neighbourhood structure the vectors encode.
 
 We model the semantic word network as a directed, weighted, \emph{implicit}
 graph $G = (V, E)$ where $V$ is the GloVe vocabulary.  Rather than
-materialising all $|V|^2 \approx 1.6 \times 10^{11}$ possible edges, we
+materializing all $|V|^2 \approx 1.6 \times 10^{11}$ possible edges, we
 construct the graph lazily: for any vertex $w \in V$, its out-neighbourhood
 $N(w)$ is computed on demand by querying
 \texttt{model.most\_similar(w, topn=50)}, returning the 50 words with the
@@ -91,11 +89,10 @@ ensure players always see a diverse spread of options:
     \item 4 \emph{related} words with similarity in $[0.45,\,0.65)$,
     \item 3 \emph{distant} words with similarity $< 0.45$,
 \end{itemize}
-yielding a consistent out-degree of 10 for each vertex.  If a bucket contains
+giving each vertex a fixed out-degree of 10.  If a bucket contains
 fewer than its quota the shortfall is filled from the remaining candidates in
-descending similarity order.  All computed neighbourhoods are memoised in a
-dictionary keyed by word so each GloVe query is performed at most once per
-session.
+descending similarity order.  We cache each computed neighbourhood in a
+dictionary so that no GloVe query runs more than once per session.
 
 \subsection*{Computations}
 
@@ -105,23 +102,25 @@ target word $t$, BFS expands nodes level by level---each node's successors being
 its pre-computed out-neighbourhood---and returns the shortest path from $s$ to
 $t$ in terms of number of steps.  Because the neighbour list is deterministic
 and fixed, the BFS path is provably achievable by a human player following the
-same edges; the shown ``optimal path'' is never a fiction.
+same edges, so the optimal path shown to the player is always one they could
+actually have taken.
 
 \textbf{Puzzle generation.}
 Puzzle generation applies BFS with a fixed daily seed to identify suitable
 start-target pairs.  We prefer pairs whose shortest BFS path is between 4 and 8
-steps, balancing challenge and solvability.  We run a fast, target-unaware BFS
-during the loading stage to validate candidates quickly (sharing a cache across
-all calls), then compute the full target-aware optimal path in a background
-thread concurrently with gameplay.
+steps, balancing challenge and solvability.  During loading, we run a quick BFS
+without a fixed target to validate candidate pairs, sharing the neighbour cache
+across calls. The full target-aware optimal path is then computed in a background
+thread while the player plays.
 
 \textbf{Target guarantee.}
 At each player step we compute the cosine similarity between the current word
 and the target.  If this similarity is $\geq 0.60$---a threshold that captures
 morphological variants (e.g.\ ``moons'' $\to$ ``moon,'' ``roses'' $\to$
-``rose'') while excluding merely related pairs---the target is inserted into the
-10-word neighbour list regardless of bucket placement, ensuring the player can
-always take the final step once they are genuinely close in semantic space.
+``rose'') while filtering out pairs that are only loosely related---the target
+is inserted into the 10-word neighbour list regardless of bucket placement,
+ensuring the player can always take the final step once they are genuinely close
+in semantic space.
 
 \textbf{Path comparison.}
 On completing the puzzle the player's step count is compared against the BFS
@@ -131,21 +130,22 @@ where they diverged.
 \subsection*{Visualisation and Interaction}
 
 The program is a Pygame application with four screens managed by a state
-machine: (1) a \emph{loading screen} with an animated progress bar that
-reflects staged progress through vector loading and puzzle generation;
-(2) a \emph{start screen} showing the target word and three selectable starting
-words; (3) the \emph{game screen} showing the current word, the player's path so
-far, and a $2 \times 5$ grid of clickable word tiles colour-coded by similarity
-label (\emph{close}, \emph{related}, \emph{distant}); and (4) a \emph{result
-screen} displaying the player's path against the BFS-optimal path with step
-counts.  An undo button allows players to retrace steps.  After winning, the
-player may continue to a new randomly chosen target from their current word.
+machine. The first is a \emph{loading screen} with an animated progress bar
+that reflects staged progress through vector loading and puzzle generation.
+Next is a \emph{start screen} showing the target word and three selectable
+starting words. The \emph{game screen} shows the current word, the player's
+path so far, and a $2 \times 5$ grid of clickable word tiles colour-coded by
+similarity label (\emph{close}, \emph{related}, \emph{distant}). Finally, a
+\emph{result screen} displays the player's path against the BFS-optimal path
+with step counts.  An undo button allows players to retrace steps.  After
+winning, the player may continue to a new randomly chosen target from their
+current word.
 
 \subsection*{New Library: \texttt{gensim}}
 
 We use the \texttt{gensim} library (version 4.x) \cite{gensim} specifically for
-its pre-trained word vector interface, which is not covered in CSC110/111.  Key
-components we rely on are:
+its pre-trained word vector interface, which we have not used in CSC110 or
+CSC111.  Key components we rely on are:
 \begin{itemize}
     \item \texttt{gensim.downloader.load('glove-wiki-gigaword-50')} --- fetches
           and caches the 400,000-word embedding model;
@@ -157,12 +157,10 @@ components we rely on are:
           similarity in $O(d)$ time, used for the target guarantee check at
           every player step.
 \end{itemize}
-Without \texttt{gensim}, computing cosine similarities over a 400,000-word
-vocabulary from scratch would require either prohibitive preprocessing or a
-custom embedding, making it infeasible within the project scope.  The library is
-appropriate because it provides exactly the semantic graph structure our project
-requires while leaving all graph traversal, puzzle logic, and game rendering to
-our own code.
+Computing cosine similarities across 400,000 words from scratch would be
+impractical within the project's timeline, so gensim's optimized vector
+operations are essential. Crucially, gensim handles only the embedding lookups;
+all graph construction, traversal, puzzle logic, and rendering are our own code.
 
 
 % ─────────────────────────────────────────────────────────────────────────────
