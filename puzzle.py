@@ -166,15 +166,16 @@ def get_neighbors(word: str, target: str = '') -> list[tuple[str, str]]:
     result = [(w, _score_label(s)) for w, s in selected[:10]]
 
     # ── Target guarantee (post-selection) ────────────────────────────────────
-    # Fires AFTER bucket selection so it works regardless of whether the target
-    # ended up in the candidate pool or was skipped by bucket counts.
-    # Threshold 0.60 catches morphological variants (moons→moon, roses→rose)
-    # without revealing the target from distantly-related words.
-    target_sim = 0.0
-    if tl and tl != wl and tl in model:
-        target_sim = _safe_sim(model, wl, tl)
-    if tl and target_sim >= 0.60 and tl not in {w for w, _ in result}:
-        result[-1] = (tl, _score_label(target_sim))
+    # If the target appeared in the top-50 GloVe pool but bucket selection
+    # happened to exclude it (e.g. the 'related' bucket was already full),
+    # force it into the last slot.  Using pool membership rather than a
+    # similarity threshold avoids fragility with polysemous words like "rose"
+    # (flower vs past tense of rise) whose GloVe sim to "roses" may be < 0.60
+    # even though they are obviously the same word.
+    if tl and tl not in {w for w, _ in result}:
+        if any(w == tl for w, _ in candidates):
+            target_sim = _safe_sim(model, wl, tl)
+            result[-1] = (tl, _score_label(target_sim))
 
     _cache[key] = result
     return result
