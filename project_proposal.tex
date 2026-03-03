@@ -26,13 +26,9 @@
 % ─────────────────────────────────────────────────────────────────────────────
 \section{Problem Description and Project Question}
 
-Human languages are vast, and the meanings of words exist on a continuous
-spectrum of similarity. A word like ``fire'' shares something with ``flame,''
-which in turn relates to ``heat,'' which connects to ``sun,'' and one can
-plausibly trace a path all the way to ``ocean.'' The study of how words relate
-semantically is a central topic in computational linguistics, and modern natural
-language processing has produced powerful mathematical tools for quantifying
-these relationships.
+The study of how words relate semantically is a central topic in computational
+linguistics, and modern natural language processing has produced powerful
+mathematical tools for quantifying these relationships.
 
 One such tool is GloVe (Global Vectors for Word Representation), a set of
 pre-trained word embeddings produced by Pennington et al.\ at Stanford
@@ -46,23 +42,21 @@ edges connect words whose cosine similarity exceeds a threshold, weighted by
 that similarity score.
 
 The games Semantle and Wordle demonstrated widespread public interest in
-word-meaning puzzles. Inspired by these, we designed \emph{Semantic Odyssey}:
+word-meaning puzzles. Inspired by these, we are designing \emph{Semantic Odyssey}:
 an interactive word-navigation puzzle in which the player starts at one word and
 must navigate a semantic similarity graph---step by step, choosing from a set of
 nearby words---to reach a hidden target word in as few moves as possible. The
 player receives feedback on how ``close'' or ``distant'' each available word is,
-and the game computes a provably achievable optimal path using breadth-first
+and the game will compute a provably achievable optimal path using breadth-first
 search on the same graph the player navigates.
 
-\textbf{Our project question is: How can the semantic similarity graph induced
-by pre-trained GloVe word embeddings be exploited to build an engaging,
-challenge-calibrated word-navigation game, and how can BFS on this implicit
-graph provide optimal-path benchmarks that are provably achievable by a human
-player navigating the same graph?}
+\textbf{Our project question is: Can a semantic similarity graph built from
+GloVe word embeddings serve as the foundation for an engaging word-navigation
+puzzle, with BFS providing a meaningful optimal-path benchmark for players?}
 
-This question is interesting because the graph is not precomputed but
-constructed lazily on demand from a 400,000-word embedding model---making the
-graph exploration both computationally rich and grounded in real linguistic data.
+This is interesting because the graph is constructed lazily on demand from a
+400,000-word embedding model, making it computationally rich and grounded in
+real linguistic data without requiring any precomputation.
 
 
 % ─────────────────────────────────────────────────────────────────────────────
